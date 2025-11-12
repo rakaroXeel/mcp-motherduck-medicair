@@ -1,0 +1,90 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "io.github.motherduckdb/mcp-server-medicair",
+  "description": "Fast analytics and data processing with DuckDB and MotherDuck",
+  "repository": {
+    "url": "https://github.com/motherduckdb/mcp-server-motherduck",
+    "source": "github"
+  },
+  "version": "0.7.2",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "mcp-server-medicair",
+      "version": "0.7.2",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "named",
+          "name": "--transport",
+          "description": "Transport type for MCP server",
+          "default": "stdio",
+          "choices": ["stdio", "sse", "stream"],
+          "isRequired": false
+        },
+        {
+          "type": "named",
+          "name": "--port",
+          "description": "Port to listen on for sse and stream transport mode",
+          "default": "8000",
+          "format": "number",
+          "isRequired": false
+        },
+        {
+          "type": "named",
+          "name": "--db-path",
+          "description": "Path to local DuckDB database file or MotherDuck database",
+          "default": "md:",
+          "isRequired": false
+        },
+        {
+          "type": "named",
+          "name": "--motherduck-token",
+          "description": "Access token to use for MotherDuck database connections",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "type": "named",
+          "name": "--read-only",
+          "description": "Flag for connecting to DuckDB or MotherDuck in read-only mode",
+          "isRequired": false
+        },
+        {
+          "type": "named",
+          "name": "--home-dir",
+          "description": "Home directory for DuckDB",
+          "isRequired": false
+        },
+        {
+          "type": "named",
+          "name": "--saas-mode",
+          "description": "Flag for connecting to MotherDuck in SaaS mode (disables filesystem and write permissions for local DuckDB)",
+          "isRequired": false
+        },
+        {
+          "type": "named",
+          "name": "--json-response",
+          "description": "Enable JSON responses for HTTP stream (only supported for stream transport)",
+          "isRequired": false
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "motherduck_token",
+          "description": "Access token to use for MotherDuck database connections",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "HOME",
+          "description": "Home directory for DuckDB (used as default if --home-dir not specified)",
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}
