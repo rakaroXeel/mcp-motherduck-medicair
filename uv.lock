@@ -177,7 +177,7 @@ wheels = [
 ]
 
 [[package]]
-name = "mcp-server-motherduck"
+name = "mcp-server-medicair"
 version = "0.7.2"
 source = { editable = "." }
 dependencies = [

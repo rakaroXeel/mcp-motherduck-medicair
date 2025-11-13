@@ -3,7 +3,7 @@
   "name": "io.github.motherduckdb/mcp-server-medicair",
   "description": "Fast analytics and data processing with DuckDB and MotherDuck",
   "repository": {
-    "url": "https://github.com/motherduckdb/mcp-server-motherduck",
+    "url": "https://github.com/motherduckdb/mcp-motherduck-medicair",
     "source": "github"
   },
   "version": "0.7.2",
