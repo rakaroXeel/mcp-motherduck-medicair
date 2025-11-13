@@ -64,7 +64,7 @@ def build_application(
                 description="A prompt to initialize a connection to duckdb or motherduck and start working with it",
             ),
             types.Prompt(
-                name="duckdb-motherduck-prompt-2",
+                name="medicair-starting-prompt",
                 description="A second prompt template for DuckDB/MotherDuck interactions",
             )
         ]
