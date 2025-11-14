@@ -90,9 +90,9 @@ def build_application(
                     )
                 ],
             )
-        elif name == "duckdb-motherduck-prompt-2":
+        elif name == "medicair-starting-prompt":
             return types.GetPromptResult(
-                description="Second prompt template for DuckDB/MotherDuck interactions",
+                description="A second prompt template for DuckDB/MotherDuck interactions",
                 messages=[
                     types.PromptMessage(
                         role="user",
