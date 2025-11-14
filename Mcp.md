@@ -486,15 +486,34 @@ async def handle_tool_call(
         ]
 ```
 
-**Nota Importante**: Il formato esatto di `structuredContent` dipende dalla versione del MCP SDK Python. **Il MCP SDK Python potrebbe non supportare ancora direttamente `structuredContent` per Apps SDK**. 
+**Approccio Corretto per Passare Dati Strutturati al Widget**:
 
-**Problema Attuale**: Se Claude/il client MCP non riconosce il widget HTML, potrebbe essere necessario:
-1. Verificare che la versione del MCP SDK Python supporti structured content per Apps SDK
-2. Verificare che la resource del widget sia correttamente esposta e accessibile
-3. Potrebbe essere necessario aggiornare il MCP SDK Python a una versione più recente che supporta Apps SDK
-4. Come workaround temporaneo, i risultati vengono restituiti come testo formattato
+Per passare dati strutturati al widget HTML quando si usa `outputTemplate` con OpenAI Apps SDK, è necessario utilizzare `EmbeddedResource` con la struttura corretta:
 
-**Verifica**: Controllare la versione del MCP SDK installata (`mcp>=1.9.4` nel pyproject.toml) e verificare se ci sono aggiornamenti disponibili che aggiungono supporto per structured content.
+```python
+embedded_resource = types.EmbeddedResource(
+    type="resource",
+    resource=types.Resource(
+        uri="ui://widget/query-results.html",
+        mimeType="application/json",
+        name="Query Results Data",
+        description="Structured query results data for widget",
+        text=json.dumps({"queryResults": structured_data}),
+    ),
+)
+```
+
+**Struttura Richiesta**:
+- `EmbeddedResource` richiede i campi obbligatori: `type="resource"` e `resource=Resource(...)`
+- Il campo `resource` deve essere un oggetto `types.Resource` con:
+  - `uri`: URI del widget (deve corrispondere a quello specificato in `outputTemplate`)
+  - `mimeType`: Tipo MIME dei dati (`application/json` per dati strutturati)
+  - `text`: I dati strutturati serializzati come JSON
+
+**Come Funziona**:
+Quando OpenAI Apps SDK vede `outputTemplate` nel metadata del tool, passa automaticamente i dati strutturati del tool output al widget tramite `window.openai.toolOutput`. Il widget HTML può quindi accedere ai dati tramite l'evento `openai:set_globals` o direttamente da `window.openai.toolOutput.queryResults`.
+
+**Nota**: Se `EmbeddedResource` fallisce la validazione, il codice fa fallback a restituire solo il contenuto testuale formattato.
 
 #### 5. Verificare CORS nel Transport Stream ✅
 

@@ -247,23 +247,35 @@ def build_application(
                 # Create TextContent with formatted output
                 text_content = types.TextContent(type="text", text=formatted_output)
                 
-                # For Apps SDK, we need to return structured content
-                # The MCP SDK Python may need structured content in a specific format
-                # Try to create an EmbeddedResource with structured data
+                # For Apps SDK integration, we need to pass structured data to the widget
+                # According to OpenAI Apps SDK documentation, when outputTemplate is specified,
+                # the tool output data is automatically passed to the widget via window.openai.toolOutput
+                # We use EmbeddedResource with the correct structure: type="resource" and resource=Resource(...)
                 try:
                     import json
-                    # Create embedded resource with structured data for the widget
+                    # Create EmbeddedResource with structured data
+                    # The structure requires: type="resource" and resource=Resource(...)
+                    # The Resource contains the data that will be passed to the widget
                     embedded_resource = types.EmbeddedResource(
-                        uri="ui://widget/query-results.html",
-                        mimeType="application/json",
-                        text=json.dumps({"queryResults": structured_data}),
+                        type="resource",
+                        resource=types.Resource(
+                            uri="ui://widget/query-results.html",
+                            mimeType="application/json",
+                            name="Query Results Data",
+                            description="Structured query results data for widget",
+                            text=json.dumps({"queryResults": structured_data}),
+                        ),
                     )
                     logger.info(f"Returning structured content with {len(structured_data.get('rows', []))} rows")
+                    # Return both text content and embedded resource
+                    # The text content provides human-readable output
+                    # The embedded resource provides structured data for the widget
                     return [text_content, embedded_resource]
                 except Exception as e:
                     logger.warning(f"Could not create EmbeddedResource: {e}, falling back to text only")
-                    # Fallback: return text content with structured data in a comment or metadata
-                    # The widget should be able to access the data via the resource
+                    # Fallback: return text content only
+                    # The widget will still be accessible but won't receive structured data
+                    logger.info(f"Query executed successfully with {len(structured_data.get('rows', []))} rows")
                     return [text_content]
 
             return [types.TextContent(type="text", text=f"Unsupported tool: {name}")]
