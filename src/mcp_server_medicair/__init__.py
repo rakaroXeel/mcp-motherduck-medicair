@@ -129,6 +129,7 @@ def main(
         from starlette.routing import Mount, Route
         from starlette.responses import Response
         from starlette.types import Receive, Scope, Send
+        from starlette.middleware.cors import CORSMiddleware
         import contextlib
 
         logger.info("MCP server initialized in \033[32mhttp-streamable\033[0m mode")
@@ -174,6 +175,19 @@ def main(
             ],
             lifespan=lifespan,
         )
+        
+        # Add CORS middleware for Apps SDK integration
+        # This allows ChatGPT to access the MCP server from different origins
+        starlette_app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],  # In production, specify exact origins
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "OPTIONS", "DELETE"],
+            allow_headers=["*"],
+            expose_headers=["Mcp-Session-Id"],
+        )
+        
+        logger.info("CORS middleware configured for Apps SDK integration")
 
         import uvicorn
 

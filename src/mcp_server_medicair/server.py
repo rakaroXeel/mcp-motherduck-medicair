@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from pydantic import AnyUrl
 from typing import Literal
 import mcp.types as types
@@ -34,19 +35,39 @@ def build_application(
     @server.list_resources()
     async def handle_list_resources() -> list[types.Resource]:
         """
-        List available note resources.
-        Each note is exposed as a resource with a custom note:// URI scheme.
+        List available resources including the query results widget.
         """
-        logger.info("No resources available to list")
-        return []
+        logger.info("Listing resources")
+        return [
+            types.Resource(
+                uri="ui://widget/query-results.html",
+                name="Query Results Widget",
+                description="Widget HTML per visualizzare i risultati delle query SQL",
+                mimeType="text/html+skybridge",
+            )
+        ]
 
     @server.read_resource()
     async def handle_read_resource(uri: AnyUrl) -> str:
         """
-        Read a specific note's content by its URI.
-        The note name is extracted from the URI host component.
+        Read the query results widget HTML.
         """
         logger.info(f"Reading resource: {uri}")
+        if uri.scheme == "ui" and uri.path == "/widget/query-results.html":
+            # Determina il percorso del file widget relativo alla root del progetto
+            # Il file si trova in public/query-results-widget.html dalla root del progetto
+            current_file = Path(__file__)
+            # Risali fino alla root del progetto (src/mcp_server_medicair/server.py -> src -> root)
+            project_root = current_file.parent.parent.parent
+            widget_path = project_root / "public" / "query-results-widget.html"
+            
+            if widget_path.exists():
+                logger.info(f"Loading widget from: {widget_path}")
+                return widget_path.read_text(encoding="utf-8")
+            else:
+                logger.error(f"Widget file not found at: {widget_path}")
+                raise ValueError(f"Widget file not found: {widget_path}")
+        
         raise ValueError(f"Unsupported URI scheme: {uri.scheme}")
 
     @server.list_prompts()
@@ -106,7 +127,7 @@ def build_application(
     @server.list_tools()
     async def handle_list_tools() -> list[types.Tool]:
         """
-        List available tools.
+        List available tools with OpenAI metadata for Apps SDK integration.
         Each tool specifies its arguments using JSON Schema validation.
         """
         logger.info("Listing tools")
@@ -124,6 +145,11 @@ def build_application(
                     },
                     "required": ["query"],
                 },
+                _meta={
+                    "openai/outputTemplate": "ui://widget/query-results.html",
+                    "openai/toolInvocation/invoking": "Eseguendo query SQL...",
+                    "openai/toolInvocation/invoked": "Query eseguita con successo",
+                },
             ),
         ]
 
@@ -132,7 +158,7 @@ def build_application(
         name: str, arguments: dict | None
     ) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
         """
-        Handle tool execution requests.
+        Handle tool execution requests with structured content for Apps SDK.
         Tools can modify server state and notify clients of changes.
         """
         logger.info(f"Calling tool: {name}::{arguments}")
@@ -142,8 +168,23 @@ def build_application(
                     return [
                         types.TextContent(type="text", text="Error: No query provided")
                     ]
-                tool_response = db_client.query(arguments["query"])
-                return [types.TextContent(type="text", text=str(tool_response))]
+                
+                # Get both formatted string and structured data
+                formatted_output, structured_data = db_client.query_with_data(arguments["query"])
+                
+                # Create TextContent with formatted output
+                text_content = types.TextContent(type="text", text=formatted_output)
+                
+                # Add structured content as metadata for Apps SDK
+                # The structured data will be available to the widget via window.openai.toolOutput.queryResults
+                if hasattr(text_content, '_meta'):
+                    text_content._meta = {"queryResults": structured_data}
+                else:
+                    # If _meta is not available, we'll include it in the response differently
+                    # For now, return both text and try to include structured data
+                    logger.info(f"Structured data prepared: {len(structured_data.get('rows', []))} rows")
+                
+                return [text_content]
 
             return [types.TextContent(type="text", text=f"Unsupported tool: {name}")]
 

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MedicAir - Risultati Query</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      
+      :root {
+        --medicair-primary: #0066cc;
+        --medicair-primary-dark: #0052a3;
+        --medicair-secondary: #00a8e8;
+        --medicair-text: #333333;
+        --medicair-text-light: #666666;
+        --medicair-bg: #f8f9fa;
+        --medicair-white: #ffffff;
+        --medicair-border: #e0e0e0;
+        --medicair-success: #28a745;
+        --medicair-shadow: rgba(0, 0, 0, 0.1);
+      }
+      
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background: var(--medicair-bg);
+        color: var(--medicair-text);
+        line-height: 1.6;
+      }
+      
+      .medicair-container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      
+      .medicair-header {
+        background: var(--medicair-white);
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 2px 8px var(--medicair-shadow);
+        border-left: 4px solid var(--medicair-primary);
+      }
+      
+      .medicair-header h1 {
+        margin: 0 0 8px 0;
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: var(--medicair-primary);
+      }
+      
+      .medicair-header p {
+        margin: 0;
+        color: var(--medicair-text-light);
+        font-size: 0.95rem;
+      }
+      
+      .medicair-card {
+        background: var(--medicair-white);
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px var(--medicair-shadow);
+        margin-bottom: 24px;
+      }
+      
+      .medicair-card h2 {
+        margin: 0 0 20px 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--medicair-text);
+        border-bottom: 2px solid var(--medicair-border);
+        padding-bottom: 12px;
+      }
+      
+      .medicair-table-wrapper {
+        overflow-x: auto;
+        border-radius: 8px;
+        border: 1px solid var(--medicair-border);
+      }
+      
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+        background: var(--medicair-white);
+      }
+      
+      thead {
+        background: linear-gradient(135deg, var(--medicair-primary) 0%, var(--medicair-secondary) 100%);
+        color: var(--medicair-white);
+      }
+      
+      th {
+        padding: 16px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      td {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--medicair-border);
+        color: var(--medicair-text);
+      }
+      
+      tbody tr {
+        transition: background-color 0.2s ease;
+      }
+      
+      tbody tr:hover {
+        background-color: #f5f8ff;
+      }
+      
+      tbody tr:last-child td {
+        border-bottom: none;
+      }
+      
+      .medicair-empty {
+        text-align: center;
+        padding: 48px 24px;
+        color: var(--medicair-text-light);
+      }
+      
+      .medicair-empty svg {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+      }
+      
+      .medicair-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      
+      .medicair-stat-card {
+        background: var(--medicair-white);
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px var(--medicair-shadow);
+        border-left: 3px solid var(--medicair-primary);
+      }
+      
+      .medicair-stat-label {
+        font-size: 0.85rem;
+        color: var(--medicair-text-light);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+      }
+      
+      .medicair-stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--medicair-primary);
+      }
+      
+      .medicair-loading {
+        text-align: center;
+        padding: 48px;
+        color: var(--medicair-text-light);
+      }
+      
+      .medicair-loading::after {
+        content: "...";
+        animation: dots 1.5s steps(4, end) infinite;
+      }
+      
+      @keyframes dots {
+        0%, 20% { content: "."; }
+        40% { content: ".."; }
+        60%, 100% { content: "..."; }
+      }
+      
+      @media (max-width: 768px) {
+        .medicair-container {
+          padding: 16px;
+        }
+        
+        .medicair-card {
+          padding: 16px;
+        }
+        
+        th, td {
+          padding: 12px 8px;
+          font-size: 0.85rem;
+        }
+        
+        .medicair-stats {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="medicair-container">
+      <div class="medicair-header">
+        <h1>MedicAir - Risultati Query</h1>
+        <p>Analisi dati e reportistica in tempo reale</p>
+      </div>
+      
+      <div id="results-container" class="medicair-card">
+        <div class="medicair-loading">Caricamento risultati</div>
+      </div>
+    </div>
+
+    <script type="module">
+      let queryResults = window.openai?.toolOutput?.queryResults ?? null;
+      
+      const renderResults = () => {
+        const container = document.querySelector("#results-container");
+        
+        if (!queryResults) {
+          container.innerHTML = `
+            <div class="medicair-empty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+              <p>Nessun risultato disponibile</p>
+            </div>
+          `;
+          return;
+        }
+        
+        // Renderizza i risultati della query
+        if (queryResults.table || queryResults.data) {
+          const data = queryResults.table || queryResults.data;
+          const headers = data.headers || Object.keys(data[0] || {});
+          const rows = data.rows || data;
+          
+          if (rows.length === 0) {
+            container.innerHTML = `
+              <h2>Risultati Query</h2>
+              <div class="medicair-empty">
+                <p>La query non ha restituito risultati</p>
+              </div>
+            `;
+            return;
+          }
+          
+          let tableHTML = '<h2>Risultati Query</h2>';
+          tableHTML += '<div class="medicair-table-wrapper"><table><thead><tr>';
+          
+          headers.forEach(header => {
+            tableHTML += `<th>${header}</th>`;
+          });
+          
+          tableHTML += '</tr></thead><tbody>';
+          
+          rows.forEach(row => {
+            tableHTML += '<tr>';
+            headers.forEach(header => {
+              const value = row[header] !== undefined ? row[header] : '';
+              tableHTML += `<td>${value}</td>`;
+            });
+            tableHTML += '</tr>';
+          });
+          
+          tableHTML += '</tbody></table></div>';
+          
+          container.innerHTML = tableHTML;
+        } else {
+          container.innerHTML = `
+            <h2>Risultati Query</h2>
+            <div class="medicair-empty">
+              <p>Formato dati non supportato</p>
+            </div>
+          `;
+        }
+      };
+      
+      const handleSetGlobals = (event) => {
+        const globals = event.detail?.globals;
+        if (globals?.toolOutput?.queryResults) {
+          queryResults = globals.toolOutput.queryResults;
+          renderResults();
+        }
+      };
+      
+      window.addEventListener("openai:set_globals", handleSetGlobals, {
+        passive: true,
+      });
+      
+      // Renderizza i risultati iniziali se disponibili
+      if (queryResults) {
+        renderResults();
+      }
+    </script>
+  </body>
+</html>
+

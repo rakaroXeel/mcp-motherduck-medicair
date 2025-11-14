@@ -168,7 +168,11 @@ class DatabaseClient:
 
         return db_path, "duckdb"
 
-    def _execute(self, query: str) -> str:
+    def _execute(self, query: str) -> tuple[str, dict]:
+        """
+        Execute a query and return both formatted string and structured data.
+        Returns: (formatted_string, structured_data_dict)
+        """
         if self.conn is None:
             # open short lived readonly connection for local DuckDB, run query, close connection, return result
             conn = duckdb.connect(
@@ -180,20 +184,45 @@ class DatabaseClient:
         else:
             q = self.conn.execute(query)
 
-        out = tabulate(
-            q.fetchall(),
-            headers=[d[0] + "\n" + str(d[1]) for d in q.description],
-            tablefmt="pretty",
-        )
+        # Get column names and types
+        column_names = [d[0] for d in q.description]
+        column_types = [str(d[1]) for d in q.description]
+        
+        # Fetch all rows
+        rows = q.fetchall()
+        
+        # Format as string using tabulate
+        formatted_headers = [name + "\n" + col_type for name, col_type in zip(column_names, column_types)]
+        formatted_output = tabulate(rows, headers=formatted_headers, tablefmt="pretty")
+
+        # Create structured data for widget
+        structured_data = {
+            "headers": column_names,
+            "rows": [dict(zip(column_names, row)) for row in rows],
+            "rowCount": len(rows),
+        }
 
         if self.conn is None:
             conn.close()
 
-        return out
+        return formatted_output, structured_data
 
     def query(self, query: str) -> str:
+        """
+        Execute a query and return formatted string (backward compatibility).
+        """
+        try:
+            formatted_output, _ = self._execute(query)
+            return formatted_output
+        except Exception as e:
+            raise ValueError(f"❌ Error executing query: {e}")
+    
+    def query_with_data(self, query: str) -> tuple[str, dict]:
+        """
+        Execute a query and return both formatted string and structured data.
+        Returns: (formatted_string, structured_data_dict)
+        """
         try:
             return self._execute(query)
-
         except Exception as e:
             raise ValueError(f"❌ Error executing query: {e}")
