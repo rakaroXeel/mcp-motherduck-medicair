@@ -3,6 +3,7 @@ from pathlib import Path
 from pydantic import AnyUrl
 from typing import Literal
 import mcp.types as types
+from mcp.types import CallToolResult
 from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
 from .configs import SERVER_VERSION
@@ -228,20 +229,22 @@ def build_application(
     @server.call_tool()
     async def handle_tool_call(
         name: str, arguments: dict | None
-    ):
+    ) -> CallToolResult:
         """
         Handle tool execution requests with structured content for Apps SDK.
-        Following OpenAI's example, we return an object with 'content' and 'structuredContent'.
+        Returns CallToolResult with both content (human-readable) and structuredContent (machine-readable).
+        When outputTemplate is specified in tool metadata, OpenAI Apps SDK automatically passes
+        structuredContent to the widget via window.openai.toolOutput.
         """
         logger.info(f"Calling tool: {name}::{arguments}")
         try:
             if name == "query":
                 if arguments is None:
-                    return {
-                        "content": [
+                    return CallToolResult(
+                        content=[
                             types.TextContent(type="text", text="Error: No query provided")
                         ]
-                    }
+                    )
                 
                 # Get both formatted string and structured data
                 formatted_output, structured_data = db_client.query_with_data(arguments["query"])
@@ -249,20 +252,19 @@ def build_application(
                 # Create TextContent with formatted output
                 text_content = types.TextContent(type="text", text=formatted_output)
                 
-                # For Apps SDK integration, following OpenAI's example:
-                # Return an object with 'content' (array) and 'structuredContent' (dict)
-                # The structuredContent will be automatically passed to the widget via window.openai.toolOutput
+                # Return CallToolResult with both content and structuredContent
+                # Following the MCP SDK Python format for Apps SDK integration
                 logger.info(f"Returning structured content with {len(structured_data.get('rows', []))} rows")
-                return {
-                    "content": [text_content],
-                    "structuredContent": {"queryResults": structured_data}
-                }
+                return CallToolResult(
+                    content=[text_content],
+                    structuredContent={"queryResults": structured_data}
+                )
 
-            return {
-                "content": [
+            return CallToolResult(
+                content=[
                     types.TextContent(type="text", text=f"Unsupported tool: {name}")
                 ]
-            }
+            )
 
         except Exception as e:
             logger.error(f"Error executing tool {name}: {e}")
