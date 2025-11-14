@@ -13,6 +13,62 @@ from .prompt import PROMPT_TEMPLATE, MOTHERDUCK_PROMPT
 logger = logging.getLogger("mcp_server_medicair")
 
 
+def parse_ui_uri(uri: AnyUrl) -> tuple[bool, str | None]:
+    """
+    Parse a UI URI for Apps SDK widgets.
+    
+    Args:
+        uri: The URI to parse (AnyUrl from Pydantic)
+        
+    Returns:
+        Tuple of (is_ui_uri, path_part) where:
+        - is_ui_uri: True if this is a ui:// URI
+        - path_part: The parsed path part of the URI, or None if not a UI URI
+    """
+    # Convert URI to string for easier parsing
+    uri_str = str(uri)
+    logger.debug(f"Parsing URI: {uri_str} (type: {type(uri)}, scheme attr: {getattr(uri, 'scheme', 'N/A')})")
+    
+    # Try multiple ways to detect ui:// URI
+    is_ui_uri = False
+    path_part = None
+    
+    # Method 1: Check if string starts with ui://
+    if uri_str.startswith("ui://"):
+        is_ui_uri = True
+        path_part = uri_str.replace("ui://", "")
+    
+    # Method 2: Check scheme attribute
+    elif hasattr(uri, 'scheme') and str(uri.scheme) == "ui":
+        is_ui_uri = True
+        # Try to get path from URI object
+        if hasattr(uri, 'path'):
+            path_part = str(uri.path)
+        elif hasattr(uri, 'host'):
+            # Sometimes widget is in host part
+            path_part = str(uri.host) if uri.host else None
+        else:
+            path_part = uri_str.replace("ui://", "")
+    
+    # Method 3: Check if URI contains widget/query-results.html
+    elif "widget/query-results.html" in uri_str or "query-results.html" in uri_str:
+        is_ui_uri = True
+        # Extract path from URI string
+        if "ui://" in uri_str:
+            path_part = uri_str.split("ui://", 1)[1]
+        else:
+            # Try to extract from any format
+            path_part = uri_str.split("://", 1)[1] if "://" in uri_str else uri_str
+    
+    if is_ui_uri and path_part:
+        # Normalize the path - remove leading slash if present
+        if path_part.startswith("/"):
+            path_part = path_part[1:]
+        logger.debug(f"Parsed UI URI path: {path_part}")
+    
+    return is_ui_uri, path_part
+
+
 def build_application(
     db_path: str,
     motherduck_token: str | None = None,
@@ -51,24 +107,40 @@ def build_application(
     async def handle_read_resource(uri: AnyUrl) -> str:
         """
         Read the query results widget HTML.
+        Supports ui:// URIs for Apps SDK widgets.
         """
-        logger.info(f"Reading resource: {uri}")
-        if uri.scheme == "ui" and uri.path == "/widget/query-results.html":
-            # Determina il percorso del file widget relativo alla root del progetto
-            # Il file si trova in public/query-results-widget.html dalla root del progetto
-            current_file = Path(__file__)
-            # Risali fino alla root del progetto (src/mcp_server_medicair/server.py -> src -> root)
-            project_root = current_file.parent.parent.parent
-            widget_path = project_root / "public" / "query-results-widget.html"
-            
-            if widget_path.exists():
-                logger.info(f"Loading widget from: {widget_path}")
-                return widget_path.read_text(encoding="utf-8")
-            else:
-                logger.error(f"Widget file not found at: {widget_path}")
-                raise ValueError(f"Widget file not found: {widget_path}")
+        uri_str = str(uri)
+        logger.info(f"Reading resource: {uri_str}")
         
-        raise ValueError(f"Unsupported URI scheme: {uri.scheme}")
+        # Parse the URI using dedicated method
+        is_ui_uri, path_part = parse_ui_uri(uri)
+        
+        if is_ui_uri and path_part:
+            logger.info(f"Detected UI resource, parsed path: {path_part}")
+            
+            # Check if it's our widget (handle both exact match and partial match)
+            if path_part == "widget/query-results.html" or path_part.endswith("query-results.html") or "query-results" in path_part:
+                # Determina il percorso del file widget relativo alla root del progetto
+                # Il file si trova in public/query-results-widget.html dalla root del progetto
+                current_file = Path(__file__)
+                # Risali fino alla root del progetto (src/mcp_server_medicair/server.py -> src -> root)
+                project_root = current_file.parent.parent.parent
+                widget_path = project_root / "public" / "query-results-widget.html"
+                
+                logger.info(f"Looking for widget at: {widget_path} (exists: {widget_path.exists()})")
+                
+                if widget_path.exists():
+                    logger.info(f"Successfully loading widget from: {widget_path}")
+                    return widget_path.read_text(encoding="utf-8")
+                else:
+                    logger.error(f"Widget file not found at: {widget_path}")
+                    raise ValueError(f"Widget file not found: {widget_path}")
+            else:
+                logger.warning(f"Unknown UI resource path: {path_part}")
+                raise ValueError(f"Unknown UI resource path: {path_part}")
+        
+        logger.error(f"Unsupported URI scheme. URI: {uri_str}, Scheme: {getattr(uri, 'scheme', 'N/A')}, Path: {getattr(uri, 'path', 'N/A')}")
+        raise ValueError(f"Unsupported URI scheme: {getattr(uri, 'scheme', 'unknown')}. Expected 'ui://' scheme for Apps SDK widgets.")
 
     @server.list_prompts()
     async def handle_list_prompts() -> list[types.Prompt]:
@@ -175,16 +247,24 @@ def build_application(
                 # Create TextContent with formatted output
                 text_content = types.TextContent(type="text", text=formatted_output)
                 
-                # Add structured content as metadata for Apps SDK
-                # The structured data will be available to the widget via window.openai.toolOutput.queryResults
-                if hasattr(text_content, '_meta'):
-                    text_content._meta = {"queryResults": structured_data}
-                else:
-                    # If _meta is not available, we'll include it in the response differently
-                    # For now, return both text and try to include structured data
-                    logger.info(f"Structured data prepared: {len(structured_data.get('rows', []))} rows")
-                
-                return [text_content]
+                # For Apps SDK, we need to return structured content
+                # The MCP SDK Python may need structured content in a specific format
+                # Try to create an EmbeddedResource with structured data
+                try:
+                    import json
+                    # Create embedded resource with structured data for the widget
+                    embedded_resource = types.EmbeddedResource(
+                        uri="ui://widget/query-results.html",
+                        mimeType="application/json",
+                        text=json.dumps({"queryResults": structured_data}),
+                    )
+                    logger.info(f"Returning structured content with {len(structured_data.get('rows', []))} rows")
+                    return [text_content, embedded_resource]
+                except Exception as e:
+                    logger.warning(f"Could not create EmbeddedResource: {e}, falling back to text only")
+                    # Fallback: return text content with structured data in a comment or metadata
+                    # The widget should be able to access the data via the resource
+                    return [text_content]
 
             return [types.TextContent(type="text", text=f"Unsupported tool: {name}")]
 

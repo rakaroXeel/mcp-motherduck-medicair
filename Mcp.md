@@ -400,6 +400,8 @@ Creare un file `public/query-results-widget.html` che visualizzi i risultati del
 
 Modificare `server.py` per registrare la resource del widget:
 
+**Nota**: Se si verifica l'errore "Unsupported URI scheme: ui", il codice è stato aggiornato per gestire diversi formati di parsing dell'URI. Verificare i log del server per vedere come viene parsato l'URI.
+
 ```python
 @server.list_resources()
 async def handle_list_resources() -> list[types.Resource]:
@@ -484,7 +486,15 @@ async def handle_tool_call(
         ]
 ```
 
-**Nota**: Il formato esatto di `structuredContent` dipende dalla versione del MCP SDK Python. Potrebbe essere necessario convertire i risultati della query in un formato JSON strutturato.
+**Nota Importante**: Il formato esatto di `structuredContent` dipende dalla versione del MCP SDK Python. **Il MCP SDK Python potrebbe non supportare ancora direttamente `structuredContent` per Apps SDK**. 
+
+**Problema Attuale**: Se Claude/il client MCP non riconosce il widget HTML, potrebbe essere necessario:
+1. Verificare che la versione del MCP SDK Python supporti structured content per Apps SDK
+2. Verificare che la resource del widget sia correttamente esposta e accessibile
+3. Potrebbe essere necessario aggiornare il MCP SDK Python a una versione più recente che supporta Apps SDK
+4. Come workaround temporaneo, i risultati vengono restituiti come testo formattato
+
+**Verifica**: Controllare la versione del MCP SDK installata (`mcp>=1.9.4` nel pyproject.toml) e verificare se ci sono aggiornamenti disponibili che aggiungono supporto per structured content.
 
 #### 5. Verificare CORS nel Transport Stream ✅
 
@@ -531,15 +541,32 @@ CORS middleware configured for Apps SDK integration
 
 L'endpoint `/mcp` sarà disponibile per le richieste da ChatGPT.
 
-#### 7. Esporre il Server su Internet Pubblico
+#### 7. Esporre il Server su Internet Pubblico ✅
 
-Per lo sviluppo, utilizzare ngrok o simile per esporre il server:
+**Opzione B: Deploy su Render.com (produzione)**
 
+Per il deploy su Render, configurare il Web Service con:
+
+**Build Command:**
 ```bash
-ngrok http 8787
+pip install .
 ```
 
-Ottenere l'URL pubblico (es. `https://<subdomain>.ngrok.app`).
+**Start Command:**
+```bash
+python -m mcp_server_medicair --transport stream --host 0.0.0.0 --port $PORT --db-path md: --motherduck-token $MOTHERDUCK_TOKEN
+```
+
+**Variabili d'Ambiente su Render:**
+- `MOTHERDUCK_TOKEN`: Token di autenticazione MotherDuck
+- `PORT`: Gestito automaticamente da Render (non impostare manualmente)
+
+**Note per Render:**
+- Il server si lega a `0.0.0.0` per accettare connessioni esterne
+- La porta viene letta dalla variabile d'ambiente `$PORT` fornita da Render
+- L'endpoint `/mcp` sarà disponibile all'URL pubblico di Render
+- L'endpoint `/health` è disponibile per health checks
+- CORS è già configurato per permettere richieste da ChatGPT
 
 #### 8. Configurare il Connector in ChatGPT
 
