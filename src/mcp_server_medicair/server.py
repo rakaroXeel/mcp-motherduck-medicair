@@ -247,17 +247,25 @@ def build_application(
                     )
                 
                 # Get both formatted string and structured data
-                formatted_output, structured_data = db_client.query_with_data(arguments["query"])
+                query_sql = arguments["query"]
+                formatted_output, structured_data = db_client.query_with_data(query_sql)
                 
                 # Create TextContent with formatted output
                 text_content = types.TextContent(type="text", text=formatted_output)
                 
+                # Prepare structuredContent for widget
+                structured_content_for_widget = {"queryResults": structured_data}
+                
+                # Log the parsed content that will be passed to the widget
+                logger.info(f"📤 Preparing content for widget component")
+                logger.info(f"📤 StructuredContent structure: queryResults.columns={len(structured_data.get('columns', []))}, queryResults.rows={len(structured_data.get('rows', []))}")
+                logger.debug(f"📤 Full structuredContent being sent to widget: {structured_content_for_widget}")
+                
                 # Return CallToolResult with both content and structuredContent
                 # Following the MCP SDK Python format for Apps SDK integration
-                logger.info(f"Returning structured content with {len(structured_data.get('rows', []))} rows")
                 return CallToolResult(
                     content=[text_content],
-                    structuredContent={"queryResults": structured_data}
+                    structuredContent=structured_content_for_widget
                 )
 
             return CallToolResult(

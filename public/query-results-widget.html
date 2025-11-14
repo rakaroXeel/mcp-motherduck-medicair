@@ -232,12 +232,17 @@
         }
         
         // Renderizza i risultati della query
-        if (queryResults.table || queryResults.data) {
-          const data = queryResults.table || queryResults.data;
-          const headers = data.headers || Object.keys(data[0] || {});
+        // Supporta due formati:
+        // 1. ChatGPT format: {columns: [...], rows: [[...], [...]]}
+        // 2. Legacy format: {headers: [...], rows: [{...}, {...}]}
+        if (queryResults.table || queryResults.data || queryResults.columns) {
+          const data = queryResults.table || queryResults.data || queryResults;
+          
+          // Determine format: ChatGPT uses 'columns', legacy uses 'headers'
+          const columns = data.columns || data.headers;
           const rows = data.rows || data;
           
-          if (rows.length === 0) {
+          if (!columns || !rows || rows.length === 0) {
             container.innerHTML = `
               <h2>Risultati Query</h2>
               <div class="medicair-empty">
@@ -247,21 +252,32 @@
             return;
           }
           
+          // Check if rows are arrays (ChatGPT format) or objects (legacy format)
+          const isArrayFormat = Array.isArray(rows[0]);
+          
           let tableHTML = '<h2>Risultati Query</h2>';
           tableHTML += '<div class="medicair-table-wrapper"><table><thead><tr>';
           
-          headers.forEach(header => {
-            tableHTML += `<th>${header}</th>`;
+          columns.forEach(column => {
+            tableHTML += `<th>${column}</th>`;
           });
           
           tableHTML += '</tr></thead><tbody>';
           
           rows.forEach(row => {
             tableHTML += '<tr>';
-            headers.forEach(header => {
-              const value = row[header] !== undefined ? row[header] : '';
-              tableHTML += `<td>${value}</td>`;
-            });
+            if (isArrayFormat) {
+              // ChatGPT format: rows is array of arrays [[val1, val2], [val3, val4]]
+              row.forEach((value, index) => {
+                tableHTML += `<td>${value !== null && value !== undefined ? value : ''}</td>`;
+              });
+            } else {
+              // Legacy format: rows is array of objects [{col1: val1, col2: val2}]
+              columns.forEach(column => {
+                const value = row[column] !== undefined ? row[column] : '';
+                tableHTML += `<td>${value}</td>`;
+              });
+            }
             tableHTML += '</tr>';
           });
           

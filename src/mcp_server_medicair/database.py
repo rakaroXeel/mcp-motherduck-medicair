@@ -173,6 +173,8 @@ class DatabaseClient:
         Execute a query and return both formatted string and structured data.
         Returns: (formatted_string, structured_data_dict)
         """
+        logger.info(f"📊 Executing SQL query: {query}")
+        
         if self.conn is None:
             # open short lived readonly connection for local DuckDB, run query, close connection, return result
             conn = duckdb.connect(
@@ -191,16 +193,23 @@ class DatabaseClient:
         # Fetch all rows
         rows = q.fetchall()
         
+        logger.info(f"✅ Query executed successfully: {len(rows)} rows returned")
+        logger.debug(f"Query result columns: {column_names}")
+        logger.debug(f"Query result sample (first 3 rows): {rows[:3] if len(rows) > 0 else 'No rows'}")
+        
         # Format as string using tabulate
         formatted_headers = [name + "\n" + col_type for name, col_type in zip(column_names, column_types)]
         formatted_output = tabulate(rows, headers=formatted_headers, tablefmt="pretty")
 
-        # Create structured data for widget
+        # Create structured data for widget in ChatGPT format
+        # ChatGPT expects: {columns: [...], rows: [[...], [...]]}
         structured_data = {
-            "headers": column_names,
-            "rows": [dict(zip(column_names, row)) for row in rows],
-            "rowCount": len(rows),
+            "columns": column_names,
+            "rows": [list(row) for row in rows],  # Keep rows as array of arrays (tuples converted to lists)
         }
+        
+        logger.debug(f"📦 Structured data created: columns={len(column_names)}, rows={len(structured_data['rows'])}")
+        logger.debug(f"📦 Structured data preview: {structured_data}")
 
         if self.conn is None:
             conn.close()
