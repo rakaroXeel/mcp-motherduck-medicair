@@ -223,6 +223,22 @@ def build_application(
                     "openai/toolInvocation/invoked": "Query eseguita con successo",
                 },
             ),
+            types.Tool(
+                name="get_starting_prompt",
+                description="Get the MedicAir starting prompt with context about the company, database structure, and how to use the available tools. Call this at the beginning of a conversation to understand the MedicAir context and database schema.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "prompt_type": {
+                            "type": "string",
+                            "description": "Type of prompt to retrieve: 'medicair' for MedicAir-specific context (default), or 'duckdb' for general DuckDB/MotherDuck context",
+                            "enum": ["medicair", "duckdb"],
+                            "default": "medicair",
+                        },
+                    },
+                    "required": [],
+                },
+            ),
         ]
 
     @server.call_tool()
@@ -277,6 +293,30 @@ def build_application(
                     # The widget will still be accessible but won't receive structured data
                     logger.info(f"Query executed successfully with {len(structured_data.get('rows', []))} rows")
                     return [text_content]
+            
+            elif name == "get_starting_prompt":
+                # Get the prompt type from arguments, default to "medicair"
+                prompt_type = "medicair"
+                if arguments and "prompt_type" in arguments:
+                    prompt_type = arguments["prompt_type"]
+                
+                # Return the appropriate prompt
+                if prompt_type == "medicair":
+                    prompt_text = MOTHERDUCK_PROMPT
+                    logger.info("Returning MedicAir starting prompt")
+                elif prompt_type == "duckdb":
+                    prompt_text = PROMPT_TEMPLATE
+                    logger.info("Returning DuckDB/MotherDuck initial prompt")
+                else:
+                    prompt_text = MOTHERDUCK_PROMPT  # Default to MedicAir
+                    logger.warning(f"Unknown prompt_type: {prompt_type}, defaulting to MedicAir")
+                
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=prompt_text
+                    )
+                ]
 
             return [types.TextContent(type="text", text=f"Unsupported tool: {name}")]
 

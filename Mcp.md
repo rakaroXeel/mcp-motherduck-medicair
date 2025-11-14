@@ -18,10 +18,13 @@ Il server consente di eseguire query SQL su database DuckDB locali, cloud-based 
 
 ### Tools
 - `query`: esegue query SQL su DuckDB o MotherDuck e restituisce risultati formattati
+- `get_starting_prompt`: restituisce il prompt di contesto MedicAir o DuckDB/MotherDuck. **Usa questo tool all'inizio di una conversazione in ChatGPT per ottenere il contesto completo** (vedi nota sotto)
 
 ### Prompts
-- `duckdb-motherduck-initial-prompt`: prompt iniziale per interagire con DuckDB/MotherDuck
-- `medicair-starting-prompt`: prompt specifico per MedicAir con contesto aziendale e struttura database
+- `duckdb-motherduck-initial-prompt`: prompt iniziale per interagire con DuckDB/MotherDuck (disponibile tramite MCP prompts o tool `get_starting_prompt`)
+- `medicair-starting-prompt`: prompt specifico per MedicAir con contesto aziendale e struttura database (disponibile tramite MCP prompts o tool `get_starting_prompt`)
+
+**Nota per ChatGPT/Apps SDK**: ChatGPT non supporta direttamente i prompt MCP nell'interfaccia. Per ottenere il contesto iniziale MedicAir, chiama il tool `get_starting_prompt` all'inizio della conversazione. Questo tool restituisce il prompt completo con tutte le informazioni sul contesto MedicAir, struttura del database e come usare i tools disponibili.
 
 ### Database Client
 Gestisce connessioni a:
@@ -599,11 +602,13 @@ python -m mcp_server_medicair --transport stream --host 0.0.0.0 --port $PORT --d
 
 1. Aprire una nuova chat in ChatGPT
 2. Aggiungere il connector dal menu **More** (accessibile dopo il pulsante **+**)
-3. Eseguire una query di esempio (es. "Esegui una query per vedere le giacenze disponibili")
-4. Verificare che il widget venga renderizzato correttamente con i risultati
+3. **Importante**: All'inizio della conversazione, chiama il tool `get_starting_prompt` per ottenere il contesto completo MedicAir. Puoi chiedere a ChatGPT: "Ottieni il prompt di contesto iniziale" oppure "Chiama get_starting_prompt"
+4. Eseguire una query di esempio (es. "Esegui una query per vedere le giacenze disponibili")
+5. Verificare che il widget venga renderizzato correttamente con i risultati
 
 ### Note Importanti
 
+- **Prompt MCP in ChatGPT**: ChatGPT non supporta direttamente i prompt MCP nell'interfaccia. Per ottenere il contesto MedicAir, usa il tool `get_starting_prompt` all'inizio di ogni conversazione. Questo tool restituisce tutto il contesto necessario (azienda, struttura database, come usare i tools).
 - **Aggiornamento Connector**: Dopo ogni modifica al server MCP (tools, metadata, ecc.), aggiornare il connector cliccando **Refresh** in **Settings → Connectors**
 - **Structured Content**: Il formato esatto dipende dalla versione del MCP SDK. Potrebbe essere necessario adattare il formato dei dati restituiti
 - **Widget HTML**: Il widget deve gestire correttamente gli eventi `openai:set_globals` per aggiornarsi quando i dati cambiano
