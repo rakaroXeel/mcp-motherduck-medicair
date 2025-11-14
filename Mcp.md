@@ -495,19 +495,17 @@ Per passare dati strutturati al widget HTML quando si usa `outputTemplate` con O
 ```python
 embedded_resource = types.EmbeddedResource(
     type="resource",
-    resource=types.Resource(
+    resource=types.TextResourceContents(
         uri="ui://widget/query-results.html",
         mimeType="application/json",
-        name="Query Results Data",
-        description="Structured query results data for widget",
         text=json.dumps({"queryResults": structured_data}),
     ),
 )
 ```
 
 **Struttura Richiesta**:
-- `EmbeddedResource` richiede i campi obbligatori: `type="resource"` e `resource=Resource(...)`
-- Il campo `resource` deve essere un oggetto `types.Resource` con:
+- `EmbeddedResource` richiede i campi obbligatori: `type="resource"` e `resource=TextResourceContents(...)`
+- Il campo `resource` deve essere un oggetto `types.TextResourceContents` (non `Resource`) con:
   - `uri`: URI del widget (deve corrispondere a quello specificato in `outputTemplate`)
   - `mimeType`: Tipo MIME dei dati (`application/json` per dati strutturati)
   - `text`: I dati strutturati serializzati come JSON
