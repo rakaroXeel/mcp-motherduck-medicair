@@ -3,7 +3,6 @@ from pathlib import Path
 from pydantic import AnyUrl
 from typing import Literal
 import mcp.types as types
-from mcp.types import CallToolResult
 from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
 from .configs import SERVER_VERSION
@@ -229,50 +228,67 @@ def build_application(
     @server.call_tool()
     async def handle_tool_call(
         name: str, arguments: dict | None
-    ) -> CallToolResult:
+    ):
         """
         Handle tool execution requests with structured content for Apps SDK.
-        Returns CallToolResult with both content (human-readable) and structuredContent (machine-readable).
-        When outputTemplate is specified in tool metadata, OpenAI Apps SDK automatically passes
-        structuredContent to the widget via window.openai.toolOutput.
+        Returns a dict with content array containing text and embedded_resource.
+        This format matches what ChatGPT/OpenAI Apps SDK expects for widget data.
         """
         logger.info(f"Calling tool: {name}::{arguments}")
         try:
             if name == "query":
                 if arguments is None:
-                    return CallToolResult(
-                        content=[
-                            types.TextContent(type="text", text="Error: No query provided")
+                    return {
+                        "content": [
+                            {"type": "text", "text": "Error: No query provided"}
                         ]
-                    )
+                    }
                 
                 # Get both formatted string and structured data
                 query_sql = arguments["query"]
                 formatted_output, structured_data = db_client.query_with_data(query_sql)
                 
-                # Create TextContent with formatted output
-                text_content = types.TextContent(type="text", text=formatted_output)
-                
-                # Prepare structuredContent for widget
-                structured_content_for_widget = {"queryResults": structured_data}
+                # Extract data
+                columns = structured_data.get("columns", [])
+                rows = structured_data.get("rows", [])
+                row_count = len(rows)
                 
                 # Log the parsed content that will be passed to the widget
                 logger.info(f"📤 Preparing content for widget component")
-                logger.info(f"📤 StructuredContent structure: queryResults.columns={len(structured_data.get('columns', []))}, queryResults.rows={len(structured_data.get('rows', []))}")
-                logger.debug(f"📤 Full structuredContent being sent to widget: {structured_content_for_widget}")
+                logger.info(f"📤 Data structure: columns={len(columns)}, rows={len(rows)}, rowCount={row_count}")
+                logger.info(f"📤 Columns: {columns}")
+                logger.info(f"📤 Rows sample (first 2): {rows[:2] if len(rows) > 0 else 'No rows'}")
                 
-                # Return CallToolResult with both content and structuredContent
-                # Following the MCP SDK Python format for Apps SDK integration
-                return CallToolResult(
-                    content=[text_content],
-                    structuredContent=structured_content_for_widget
-                )
+                # Build OpenAI Apps SDK format payload
+                # Format: {content: [{type: "text", ...}, {type: "embedded_resource", ...}]}
+                widget_payload = {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": f"Risultati della query: {row_count} righe trovate.\n\n{formatted_output}"
+                        },
+                        {
+                            "type": "embedded_resource",
+                            "resource": {
+                                "mime_type": "application/json",
+                                "data": {
+                                    "columns": columns,
+                                    "rows": rows
+                                }
+                            }
+                        }
+                    ]
+                }
+                
+                logger.info(f"📤 Full widget payload being sent: {widget_payload}")
+                
+                return widget_payload
 
-            return CallToolResult(
-                content=[
-                    types.TextContent(type="text", text=f"Unsupported tool: {name}")
+            return {
+                "content": [
+                    {"type": "text", "text": f"Unsupported tool: {name}"}
                 ]
-            )
+            }
 
         except Exception as e:
             logger.error(f"Error executing tool {name}: {e}")

@@ -202,14 +202,15 @@ class DatabaseClient:
         formatted_output = tabulate(rows, headers=formatted_headers, tablefmt="pretty")
 
         # Create structured data for widget in ChatGPT format
-        # ChatGPT expects: {columns: [...], rows: [[...], [...]]}
+        # ChatGPT expects: {columns: [...], rows: [[...], [...]], rowCount: int}
         structured_data = {
             "columns": column_names,
             "rows": [list(row) for row in rows],  # Keep rows as array of arrays (tuples converted to lists)
+            "rowCount": len(rows),
         }
         
-        logger.debug(f"📦 Structured data created: columns={len(column_names)}, rows={len(structured_data['rows'])}")
-        logger.debug(f"📦 Structured data preview: {structured_data}")
+        logger.debug(f"📦 Structured data created: columns={len(column_names)}, rows={len(structured_data['rows'])}, rowCount={structured_data['rowCount']}")
+        logger.debug(f"📦 Structured data preview: columns={column_names[:5]}..., rows count={len(structured_data['rows'])}")
 
         if self.conn is None:
             conn.close()
