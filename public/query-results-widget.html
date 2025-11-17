@@ -214,10 +214,59 @@
     </div>
 
     <script type="module">
-      let queryResults = window.openai?.toolOutput?.queryResults ?? null;
+      let queryResults = null;
+      
+      // Funzione per estrarre i dati dall'EmbeddedResource
+      const extractQueryResults = () => {
+        // Prova diversi percorsi dove i dati potrebbero essere
+        // 1. Da window.openai.toolOutput.queryResults
+        if (window.openai?.toolOutput?.queryResults) {
+          return window.openai.toolOutput.queryResults;
+        }
+        
+        // 2. Da window.openai.toolOutput (dati diretti)
+        if (window.openai?.toolOutput) {
+          const output = window.openai.toolOutput;
+          // Se i dati sono direttamente nell'output con columns/rows
+          if (output.columns && output.rows) {
+            return output;
+          }
+          // Se c'è un campo che contiene i dati JSON
+          if (output.data) {
+            try {
+              return typeof output.data === 'string' ? JSON.parse(output.data) : output.data;
+            } catch (e) {
+              console.error('Error parsing output.data:', e);
+            }
+          }
+        }
+        
+        // 3. Cerca nei resource contents se disponibili
+        if (window.openai?.resources) {
+          for (const resource of window.openai.resources) {
+            if (resource.mimeType === 'application/json' && resource.text) {
+              try {
+                const parsed = typeof resource.text === 'string' ? JSON.parse(resource.text) : resource.text;
+                if (parsed.columns && parsed.rows) {
+                  return parsed;
+                }
+              } catch (e) {
+                console.error('Error parsing resource text:', e);
+              }
+            }
+          }
+        }
+        
+        return null;
+      };
       
       const renderResults = () => {
         const container = document.querySelector("#results-container");
+        
+        queryResults = extractQueryResults();
+        
+        console.log('Query results extracted:', queryResults);
+        console.log('window.openai:', window.openai);
         
         if (!queryResults) {
           container.innerHTML = `
@@ -226,78 +275,69 @@
                 <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
               <p>Nessun risultato disponibile</p>
+              <p style="font-size: 0.8rem; margin-top: 8px; color: #999;">Debug: window.openai disponibile: ${!!window.openai}</p>
             </div>
           `;
           return;
         }
         
         // Renderizza i risultati della query
-        // Supporta due formati:
-        // 1. ChatGPT format: {columns: [...], rows: [[...], [...]]}
-        // 2. Legacy format: {headers: [...], rows: [{...}, {...}]}
-        if (queryResults.table || queryResults.data || queryResults.columns) {
-          const data = queryResults.table || queryResults.data || queryResults;
-          
-          // Determine format: ChatGPT uses 'columns', legacy uses 'headers'
-          const columns = data.columns || data.headers;
-          const rows = data.rows || data;
-          
-          if (!columns || !rows || rows.length === 0) {
-            container.innerHTML = `
-              <h2>Risultati Query</h2>
-              <div class="medicair-empty">
-                <p>La query non ha restituito risultati</p>
-              </div>
-            `;
-            return;
-          }
-          
-          // Check if rows are arrays (ChatGPT format) or objects (legacy format)
-          const isArrayFormat = Array.isArray(rows[0]);
-          
-          let tableHTML = '<h2>Risultati Query</h2>';
-          tableHTML += '<div class="medicair-table-wrapper"><table><thead><tr>';
-          
-          columns.forEach(column => {
-            tableHTML += `<th>${column}</th>`;
-          });
-          
-          tableHTML += '</tr></thead><tbody>';
-          
-          rows.forEach(row => {
-            tableHTML += '<tr>';
-            if (isArrayFormat) {
-              // ChatGPT format: rows is array of arrays [[val1, val2], [val3, val4]]
-              row.forEach((value, index) => {
-                tableHTML += `<td>${value !== null && value !== undefined ? value : ''}</td>`;
-              });
-            } else {
-              // Legacy format: rows is array of objects [{col1: val1, col2: val2}]
-              columns.forEach(column => {
-                const value = row[column] !== undefined ? row[column] : '';
-                tableHTML += `<td>${value}</td>`;
-              });
-            }
-            tableHTML += '</tr>';
-          });
-          
-          tableHTML += '</tbody></table></div>';
-          
-          container.innerHTML = tableHTML;
-        } else {
+        // Supporta formato: {columns: [...], rows: [[...], [...]]}
+        const data = queryResults;
+        const columns = data.columns || data.headers;
+        const rows = data.rows || [];
+        
+        if (!columns || !rows || rows.length === 0) {
           container.innerHTML = `
             <h2>Risultati Query</h2>
             <div class="medicair-empty">
-              <p>Formato dati non supportato</p>
+              <p>La query non ha restituito risultati</p>
             </div>
           `;
+          return;
         }
+        
+        // Check if rows are arrays (ChatGPT format) or objects (legacy format)
+        const isArrayFormat = Array.isArray(rows[0]);
+        
+        let tableHTML = '<h2>Risultati Query</h2>';
+        tableHTML += '<div class="medicair-table-wrapper"><table><thead><tr>';
+        
+        columns.forEach(column => {
+          tableHTML += `<th>${column}</th>`;
+        });
+        
+        tableHTML += '</tr></thead><tbody>';
+        
+        rows.forEach(row => {
+          tableHTML += '<tr>';
+          if (isArrayFormat) {
+            // ChatGPT format: rows is array of arrays [[val1, val2], [val3, val4]]
+            row.forEach((value, index) => {
+              const displayValue = value !== null && value !== undefined ? String(value) : '';
+              tableHTML += `<td>${displayValue}</td>`;
+            });
+          } else {
+            // Legacy format: rows is array of objects [{col1: val1, col2: val2}]
+            columns.forEach(column => {
+              const value = row[column] !== undefined ? row[column] : '';
+              tableHTML += `<td>${value}</td>`;
+            });
+          }
+          tableHTML += '</tr>';
+        });
+        
+        tableHTML += '</tbody></table></div>';
+        
+        container.innerHTML = tableHTML;
       };
       
       const handleSetGlobals = (event) => {
+        console.log('openai:set_globals event received:', event.detail);
         const globals = event.detail?.globals;
-        if (globals?.toolOutput?.queryResults) {
-          queryResults = globals.toolOutput.queryResults;
+        if (globals?.toolOutput) {
+          window.openai = window.openai || {};
+          window.openai.toolOutput = globals.toolOutput;
           renderResults();
         }
       };
@@ -306,9 +346,23 @@
         passive: true,
       });
       
-      // Renderizza i risultati iniziali se disponibili
-      if (queryResults) {
+      // Prova a renderizzare immediatamente se i dati sono già disponibili
+      if (window.openai) {
         renderResults();
+      } else {
+        // Aspetta che window.openai sia disponibile
+        const checkOpenAI = setInterval(() => {
+          if (window.openai) {
+            clearInterval(checkOpenAI);
+            renderResults();
+          }
+        }, 100);
+        
+        // Timeout dopo 5 secondi
+        setTimeout(() => {
+          clearInterval(checkOpenAI);
+          renderResults();
+        }, 5000);
       }
     </script>
   </body>

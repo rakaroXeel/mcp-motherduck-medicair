@@ -307,10 +307,19 @@ def build_application(
                 
                 # Build MCP format response - return list of content objects
                 # MCP expects a list of TextContent and EmbeddedResource objects, not a dict
+                # OpenAI Apps SDK expects data wrapped in {"queryResults": {...}} for the widget
                 widget_data = {
                     "columns": columns,
                     "rows": formatted_rows
                 }
+                
+                # Wrap data in queryResults key as expected by OpenAI Apps SDK
+                embedded_data = {
+                    "queryResults": widget_data
+                }
+                
+                logger.info(f"📤 Sending EmbeddedResource with data: queryResults={{columns: {len(columns)}, rows: {len(formatted_rows)}}}")
+                logger.debug(f"📤 EmbeddedResource JSON preview: {json.dumps(embedded_data)[:200]}...")
                 
                 return [
                     types.TextContent(
@@ -322,7 +331,7 @@ def build_application(
                         resource={
                             "uri": "ui://widget/query-results.html",
                             "mimeType": "application/json",
-                            "text": json.dumps(widget_data)
+                            "text": json.dumps(embedded_data)
                         }
                     )
                 ]
