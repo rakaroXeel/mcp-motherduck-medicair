@@ -6,18 +6,87 @@
 (function() {
   'use strict';
   
-  console.log('🔵 Widget JS loaded and initialized');
-
   // Elementi DOM
   const requestInput = document.getElementById('request-input');
   const responseOutput = document.getElementById('response-output');
   const statusDiv = document.getElementById('status');
+  const logOutput = document.getElementById('log-output');
   
-  if (!requestInput || !responseOutput || !statusDiv) {
+  // Salva i metodi originali della console
+  const originalConsoleLog = console.log.bind(console);
+  const originalConsoleError = console.error.bind(console);
+  
+  /**
+   * Scrive un messaggio nel div dei log
+   */
+  function writeToLog(message, type = 'log') {
+    if (!logOutput) return;
+    
+    try {
+      // Converte il messaggio in stringa
+      let logMessage = '';
+      if (typeof message === 'string') {
+        logMessage = message;
+      } else if (message instanceof Error) {
+        logMessage = `[ERROR] ${message.message}\n${message.stack || ''}`;
+      } else {
+        try {
+          logMessage = JSON.stringify(message, null, 2);
+        } catch (e) {
+          logMessage = String(message);
+        }
+      }
+      
+      // Aggiunge il prefisso per gli errori
+      if (type === 'error') {
+        logMessage = `[ERROR] ${logMessage}`;
+      }
+      
+      // Aggiunge il messaggio al div con un a capo
+      logOutput.textContent += logMessage + '\n';
+      
+      // Scroll automatico verso il basso
+      logOutput.scrollTop = logOutput.scrollHeight;
+    } catch (e) {
+      // Se c'è un errore, usa la console originale
+      originalConsoleError('Error writing to log div:', e);
+    }
+  }
+  
+  /**
+   * Wrapper per console.log che scrive anche nel div
+   */
+  console.log = function(...args) {
+    // Chiama la console originale
+    originalConsoleLog.apply(console, args);
+    
+    // Scrive nel div
+    args.forEach(arg => {
+      writeToLog(arg, 'log');
+    });
+  };
+  
+  /**
+   * Wrapper per console.error che scrive anche nel div
+   */
+  console.error = function(...args) {
+    // Chiama la console originale
+    originalConsoleError.apply(console, args);
+    
+    // Scrive nel div
+    args.forEach(arg => {
+      writeToLog(arg, 'error');
+    });
+  };
+  
+  console.log('🔵 Widget JS loaded and initialized');
+  
+  if (!requestInput || !responseOutput || !statusDiv || !logOutput) {
     console.error('❌ DOM elements not found:', {
       requestInput: !!requestInput,
       responseOutput: !!responseOutput,
-      statusDiv: !!statusDiv
+      statusDiv: !!statusDiv,
+      logOutput: !!logOutput
     });
     return;
   }
@@ -108,25 +177,45 @@
    */
   function handleSetGlobals(event) {
     console.log('📨 openai:set_globals event received:', event.detail);
-    
+
     const globals = event.detail?.globals;
     console.log('📦 Globals extracted:', globals);
-    
-    if (globals?.toolOutput) {
-      console.log('✅ toolOutput found in globals');
-      window.openai = window.openai || {};
-      window.openai.toolOutput = globals.toolOutput;
-      
-      const data = extractToolOutput();
-      if (data) {
-        console.log('✅ Data extracted, updating UI');
-        updateRequestInput(data);
-        displayResponse(data);
-      } else {
-        console.log('⚠️ No data extracted from toolOutput');
-      }
+
+    if (!globals) {
+      console.log('⚠️ Nessun globals presente in event.detail');
+      showStatus('Nessun dato ricevuto dal tool MCP', 'error');
+      return;
+    }
+
+    // 👉 LOG EXTRA per capire la struttura reale
+    try {
+      console.log('📄 Globals JSON:', JSON.stringify(globals, null, 2));
+    } catch (e) {
+      console.log('⚠️ Impossibile serializzare globals:', e);
+    }
+
+    // 👉 Qui è il punto chiave:
+    //  - se esiste globals.toolOutput, usalo
+    //  - altrimenti, se esiste globals.text, usalo
+    //  - altrimenti, come fallback usa tutto l'oggetto globals
+    const toolOutputLike =
+      globals.toolOutput ??
+      globals.text ??
+      globals;
+
+    console.log('✅ toolOutput-like data found:', toolOutputLike);
+
+    window.openai = window.openai || {};
+    window.openai.toolOutput = toolOutputLike;
+
+    const data = extractToolOutput();
+    if (data) {
+      console.log('✅ Data extracted, updating UI');
+      updateRequestInput(globals);   // puoi passare globals per avere un po' di contesto
+      displayResponse(data);
     } else {
-      console.log('⚠️ No toolOutput in globals:', Object.keys(globals || {}));
+      console.log('⚠️ No data extracted from toolOutput');
+      showStatus('Nessun dato utilizzabile dal tool MCP', 'info');
     }
   }
 

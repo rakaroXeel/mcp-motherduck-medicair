@@ -97,6 +97,23 @@
         color: #c62828;
       }
       
+      .log-container {
+        width: 100%;
+        min-height: 200px;
+        max-height: 400px;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: #1e1e1e;
+        color: #d4d4d4;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      
       @media (max-width: 768px) {
         body {
           padding: 12px;
@@ -133,6 +150,14 @@
           readonly 
           placeholder="La risposta JSON apparirà qui quando ChatGPT chiamerà un tool MCP..."
         ></textarea>
+      </div>
+      
+      <div class="input-section">
+        <label for="log-output">Log del Widget</label>
+        <div 
+          id="log-output" 
+          class="log-container"
+        ></div>
       </div>
       
       <div id="status" class="status info" style="display: none;"></div>
