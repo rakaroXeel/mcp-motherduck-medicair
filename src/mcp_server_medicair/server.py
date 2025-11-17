@@ -297,15 +297,9 @@ def build_application(
                     if isinstance(value, (int, float, bool, str)):
                         return value
                     
-                    # For any other type, try to serialize as-is first
-                    # This handles edge cases like UUID, custom types, etc.
-                    try:
-                        json.dumps(value)
-                        return value
-                    except (TypeError, ValueError):
-                        # If serialization fails, convert to string as fallback
-                        logger.warning(f"Converting non-serializable type {type(value)} to string: {value}")
-                        return str(value)
+                    # For any other type, convert to string as fallback
+                    logger.info(f"Converting unknown type {type(value)} to string: {value}")
+                    return str(value)
                 
                 # Convert rows to ensure they're arrays of arrays with JSON-serializable values
                 formatted_rows = [
@@ -335,7 +329,14 @@ def build_application(
                     ]
                 }
                 
-                logger.info(f"📤 Full widget payload being sent: {widget_payload}")
+                # Test JSON serialization to catch errors early
+                try:
+                    json.dumps(widget_payload)
+                except (TypeError, ValueError) as json_error:
+                    logger.error(f"❌ Widget Error: JSON serialization failed: {json_error}")
+                    raise
+                
+                logger.info(f"📤 Widget payload sent: {len(formatted_rows)} rows")
                 
                 return widget_payload
 
@@ -346,7 +347,7 @@ def build_application(
             }
 
         except Exception as e:
-            logger.error(f"Error executing tool {name}: {e}")
+            logger.info(f"❌ Widget Error: {e}")
             raise ValueError(f"Error executing tool {name}: {str(e)}")
 
     initialization_options = InitializationOptions(
