@@ -5,11 +5,24 @@
 
 (function() {
   'use strict';
+  
+  console.log('🔵 Widget JS loaded and initialized');
 
   // Elementi DOM
   const requestInput = document.getElementById('request-input');
   const responseOutput = document.getElementById('response-output');
   const statusDiv = document.getElementById('status');
+  
+  if (!requestInput || !responseOutput || !statusDiv) {
+    console.error('❌ DOM elements not found:', {
+      requestInput: !!requestInput,
+      responseOutput: !!responseOutput,
+      statusDiv: !!statusDiv
+    });
+    return;
+  }
+  
+  console.log('✅ DOM elements found');
 
   /**
    * Mostra un messaggio di stato
@@ -31,11 +44,19 @@
    * Estrae i dati dal toolOutput di OpenAI Apps SDK
    */
   function extractToolOutput() {
+    console.log('🔍 Checking window.openai:', {
+      exists: !!window.openai,
+      hasToolOutput: !!(window.openai && window.openai.toolOutput),
+      toolOutput: window.openai?.toolOutput
+    });
+    
     if (!window.openai || !window.openai.toolOutput) {
+      console.log('⚠️ No toolOutput available');
       return null;
     }
 
     const toolOutput = window.openai.toolOutput;
+    console.log('✅ ToolOutput found:', toolOutput);
     
     // Restituisce l'intero oggetto toolOutput per mostrare tutto
     return toolOutput;
@@ -86,18 +107,26 @@
    * Gestisce l'evento openai:set_globals
    */
   function handleSetGlobals(event) {
-    console.log('openai:set_globals event received:', event.detail);
+    console.log('📨 openai:set_globals event received:', event.detail);
     
     const globals = event.detail?.globals;
+    console.log('📦 Globals extracted:', globals);
+    
     if (globals?.toolOutput) {
+      console.log('✅ toolOutput found in globals');
       window.openai = window.openai || {};
       window.openai.toolOutput = globals.toolOutput;
       
       const data = extractToolOutput();
       if (data) {
+        console.log('✅ Data extracted, updating UI');
         updateRequestInput(data);
         displayResponse(data);
+      } else {
+        console.log('⚠️ No data extracted from toolOutput');
       }
+    } else {
+      console.log('⚠️ No toolOutput in globals:', Object.keys(globals || {}));
     }
   }
 
@@ -105,51 +134,64 @@
    * Inizializza il widget
    */
   function init() {
+    console.log('🚀 Initializing widget...');
+    
     // Ascolta l'evento openai:set_globals
     window.addEventListener('openai:set_globals', handleSetGlobals, {
       passive: true
     });
+    console.log('👂 Event listener registered for openai:set_globals');
 
     // Prova a leggere i dati se già disponibili
     if (window.openai) {
+      console.log('✅ window.openai already available');
       const data = extractToolOutput();
       if (data) {
+        console.log('✅ Data found, displaying');
         updateRequestInput(data);
         displayResponse(data);
         return;
       }
 
+      console.log('⚠️ No data in toolOutput yet');
       showStatus('In attesa di dati dal tool MCP...', 'info');
       return;
     } 
     
-      showStatus('In attesa di inizializzazione OpenAI Apps SDK...', 'info');
-      
-      // Polling per aspettare che window.openai sia disponibile
-      const checkInterval = setInterval(() => {
-        if (window.openai) {
-          clearInterval(checkInterval);
-          const data = extractToolOutput();
-          if (data) {
-            updateRequestInput(data);
-            displayResponse(data);
-            return;
-          }
-
-          showStatus('In attesa di dati dal tool MCP...', 'info');
-        }
-      }, 100);
-
-      // Timeout dopo 5 secondi
-      setTimeout(() => {
-        clearInterval(checkInterval);
-        if (!window.openai) {
-          showStatus('OpenAI Apps SDK non disponibile', 'error');
-        }
-      }, 5000);
+    console.log('⚠️ window.openai not available, starting polling...');
+    showStatus('In attesa di inizializzazione OpenAI Apps SDK...', 'info');
     
+    // Polling per aspettare che window.openai sia disponibile
+    const checkInterval = setInterval(() => {
+      if (window.openai) {
+        console.log('✅ window.openai became available');
+        clearInterval(checkInterval);
+        const data = extractToolOutput();
+        if (data) {
+          console.log('✅ Data found after polling, displaying');
+          updateRequestInput(data);
+          displayResponse(data);
+          return;
+        }
+
+        console.log('⚠️ No data in toolOutput after polling');
+        showStatus('In attesa di dati dal tool MCP...', 'info');
+      }
+    }, 100);
+
+    // Timeout dopo 5 secondi
+    setTimeout(() => {
+      clearInterval(checkInterval);
+      if (!window.openai) {
+        console.error('❌ window.openai still not available after 5 seconds');
+        showStatus('OpenAI Apps SDK non disponibile', 'error');
+      }
+    }, 5000);
   }
 
+  // Mostra messaggio iniziale
+  showStatus('Widget inizializzato. In attesa di dati...', 'info');
+  
   // Inizializza quando il DOM è pronto
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

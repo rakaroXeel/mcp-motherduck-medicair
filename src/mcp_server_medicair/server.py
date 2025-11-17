@@ -94,7 +94,7 @@ def build_application(
     @server.list_resources()
     async def handle_list_resources() -> list[types.Resource]:
         """
-        List available resources including the query results widget.
+        List available resources including the query results widget and its JavaScript.
         """
         logger.info("Listing resources")
         return [
@@ -103,6 +103,12 @@ def build_application(
                 name="Query Results Widget",
                 description="Widget HTML per visualizzare i risultati delle query SQL",
                 mimeType="text/html+skybridge",
+            ),
+            types.Resource(
+                uri="ui://widget/query-results-widget.js",
+                name="Query Results Widget JS",
+                description="JavaScript per il widget dei risultati query",
+                mimeType="application/javascript",
             )
         ]
 
@@ -121,40 +127,46 @@ def build_application(
         if is_ui_uri and path_part:
             logger.info(f"Detected UI resource, parsed path: {path_part}")
             
-            # Check if it's our widget (handle both exact match and partial match)
-            if path_part == "widget/query-results.html" or path_part.endswith("query-results.html") or "query-results" in path_part:
-                # Determina il percorso del file widget relativo alla root del progetto
-                # Il file si trova in public/query-results-widget.html dalla root del progetto
-                current_file = Path(__file__)
-                # Risali fino alla root del progetto (src/mcp_server_medicair/server.py -> src -> root)
-                project_root = current_file.parent.parent.parent
+            # Determina il percorso del file relativo alla root del progetto
+            current_file = Path(__file__)
+            # Risali fino alla root del progetto (src/mcp_server_medicair/server.py -> src -> root)
+            project_root = current_file.parent.parent.parent
+            
+            # Check if it's the HTML widget
+            if path_part == "widget/query-results.html" or path_part.endswith("query-results.html") or "query-results.html" in path_part:
                 widget_html_path = project_root / "public" / "query-results-widget.html"
-                widget_js_path = project_root / "public" / "query-results-widget.js"
                 
                 logger.info(f"Looking for widget HTML at: {widget_html_path} (exists: {widget_html_path.exists()})")
-                logger.info(f"Looking for widget JS at: {widget_js_path} (exists: {widget_js_path.exists()})")
                 
                 if not widget_html_path.exists():
                     logger.error(f"Widget HTML file not found at: {widget_html_path}")
                     raise ValueError(f"Widget file not found: {widget_html_path}")
                 
-                # Leggi il file HTML
                 html_content = widget_html_path.read_text(encoding="utf-8")
-                
-                # Leggi il file JS se esiste e includilo inline
-                if widget_js_path.exists():
-                    js_content = widget_js_path.read_text(encoding="utf-8")
-                    # Sostituisci il placeholder script con il contenuto JS
-                    html_content = html_content.replace(
-                        '<script>\n      /* JavaScript will be injected here by the server */\n    </script>',
-                        f'<script>\n{js_content}\n    </script>'
-                    )
-                    logger.info("Successfully loaded widget HTML and JS, JS included inline")
-                else:
-                    logger.warning(f"Widget JS file not found at: {widget_js_path}, serving HTML without JS")
-                
-                logger.info(f"Successfully loading widget from: {widget_html_path}")
+                logger.info(f"Successfully loading widget HTML from: {widget_html_path}")
                 return html_content
+            
+            # Check if it's the JavaScript file
+            elif path_part == "widget/query-results-widget.js" or path_part.endswith("query-results-widget.js") or "query-results-widget.js" in path_part:
+                widget_js_path = project_root / "public" / "query-results-widget.js"
+                
+                logger.info(f"Looking for widget JS at: {widget_js_path} (exists: {widget_js_path.exists()})")
+                
+                if not widget_js_path.exists():
+                    logger.error(f"Widget JS file not found at: {widget_js_path}")
+                    raise ValueError(f"Widget JS file not found: {widget_js_path}")
+                
+                js_content = widget_js_path.read_text(encoding="utf-8")
+                logger.info(f"Successfully loading widget JS from: {widget_js_path}")
+                return js_content
+            
+            # Fallback: check for any query-results related resource
+            elif "query-results" in path_part:
+                # Try HTML first
+                widget_html_path = project_root / "public" / "query-results-widget.html"
+                if widget_html_path.exists():
+                    logger.info(f"Fallback: loading widget HTML from: {widget_html_path}")
+                    return widget_html_path.read_text(encoding="utf-8")
             else:
                 logger.warning(f"Unknown UI resource path: {path_part}")
                 raise ValueError(f"Unknown UI resource path: {path_part}")
