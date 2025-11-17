@@ -18,6 +18,7 @@ logger = logging.getLogger("mcp_server_medicair")
 
 def parse_ui_uri(uri: AnyUrl) -> tuple[bool, str | None]:
     """
+    Reset Commit
     Parse a UI URI for Apps SDK widgets.
     
     Args:
