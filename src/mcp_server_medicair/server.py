@@ -1,5 +1,8 @@
+import json
 import logging
 from pathlib import Path
+from datetime import datetime, date
+from decimal import Decimal
 from pydantic import AnyUrl
 from typing import Literal
 import mcp.types as types
@@ -259,8 +262,60 @@ def build_application(
                 logger.info(f"📤 Columns: {columns}")
                 logger.info(f"📤 Rows sample (first 2): {rows[:2] if len(rows) > 0 else 'No rows'}")
                 
+                # Ensure rows are properly formatted as array of arrays
+                # Convert each row to a list and handle JSON-serializable values
+                def json_serialize_value(value):
+                    """Convert value to JSON-serializable format.
+                    Preserves original types (int, float, bool, str) and only converts
+                    non-JSON-serializable types (datetime, Decimal, bytes, complex types).
+                    """
+                    # Handle None
+                    if value is None:
+                        return None
+                    
+                    # Handle datetime/date types
+                    if isinstance(value, (datetime, date)):
+                        return value.isoformat()
+                    
+                    # Handle Decimal
+                    if isinstance(value, Decimal):
+                        return float(value)
+                    
+                    # Handle bytes
+                    if isinstance(value, (bytes, bytearray)):
+                        return value.hex()
+                    
+                    # Handle DuckDB LIST/ARRAY types - recursively serialize
+                    if isinstance(value, (list, tuple)):
+                        return [json_serialize_value(item) for item in value]
+                    
+                    # Handle DuckDB STRUCT/MAP types - recursively serialize
+                    if isinstance(value, dict):
+                        return {str(k): json_serialize_value(v) for k, v in value.items()}
+                    
+                    # Preserve original types - DO NOT convert to string
+                    if isinstance(value, (int, float, bool, str)):
+                        return value
+                    
+                    # For any other type, try to serialize as-is first
+                    # This handles edge cases like UUID, custom types, etc.
+                    try:
+                        json.dumps(value)
+                        return value
+                    except (TypeError, ValueError):
+                        # If serialization fails, convert to string as fallback
+                        logger.warning(f"Converting non-serializable type {type(value)} to string: {value}")
+                        return str(value)
+                
+                # Convert rows to ensure they're arrays of arrays with JSON-serializable values
+                formatted_rows = [
+                    [json_serialize_value(cell) for cell in row]
+                    for row in rows
+                ]
+                
                 # Build OpenAI Apps SDK format payload
-                # Format: {content: [{type: "text", ...}, {type: "embedded_resource", ...}]}
+                # Structure: {content: [{type: "text", ...}, {type: "embedded_resource", ...}]}
+                # Each content item must have a "type" field
                 widget_payload = {
                     "content": [
                         {
@@ -273,7 +328,7 @@ def build_application(
                                 "mime_type": "application/json",
                                 "data": {
                                     "columns": columns,
-                                    "rows": rows
+                                    "rows": formatted_rows
                                 }
                             }
                         }
