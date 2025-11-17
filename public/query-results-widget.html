@@ -3,368 +3,143 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MedicAir - Risultati Query</title>
+    <title>MedicAir MCP Tool Tester</title>
     <style>
       * {
         box-sizing: border-box;
-      }
-      
-      :root {
-        --medicair-primary: #0066cc;
-        --medicair-primary-dark: #0052a3;
-        --medicair-secondary: #00a8e8;
-        --medicair-text: #333333;
-        --medicair-text-light: #666666;
-        --medicair-bg: #f8f9fa;
-        --medicair-white: #ffffff;
-        --medicair-border: #e0e0e0;
-        --medicair-success: #28a745;
-        --medicair-shadow: rgba(0, 0, 0, 0.1);
+        margin: 0;
+        padding: 0;
       }
       
       body {
-        margin: 0;
-        padding: 0;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        background: var(--medicair-bg);
-        color: var(--medicair-text);
+        background: #f5f5f5;
+        color: #333;
+        padding: 20px;
         line-height: 1.6;
       }
       
-      .medicair-container {
-        width: 100%;
+      .container {
         max-width: 1200px;
         margin: 0 auto;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         padding: 24px;
       }
       
-      .medicair-header {
-        background: var(--medicair-white);
-        border-radius: 12px;
-        padding: 24px;
+      h1 {
+        color: #0066cc;
         margin-bottom: 24px;
-        box-shadow: 0 2px 8px var(--medicair-shadow);
-        border-left: 4px solid var(--medicair-primary);
-      }
-      
-      .medicair-header h1 {
-        margin: 0 0 8px 0;
         font-size: 1.75rem;
         font-weight: 600;
-        color: var(--medicair-primary);
       }
       
-      .medicair-header p {
-        margin: 0;
-        color: var(--medicair-text-light);
-        font-size: 0.95rem;
-      }
-      
-      .medicair-card {
-        background: var(--medicair-white);
-        border-radius: 12px;
-        padding: 24px;
-        box-shadow: 0 2px 8px var(--medicair-shadow);
+      .input-section {
         margin-bottom: 24px;
       }
       
-      .medicair-card h2 {
-        margin: 0 0 20px 0;
-        font-size: 1.5rem;
-        font-weight: 600;
-        color: var(--medicair-text);
-        border-bottom: 2px solid var(--medicair-border);
-        padding-bottom: 12px;
-      }
-      
-      .medicair-table-wrapper {
-        overflow-x: auto;
-        border-radius: 8px;
-        border: 1px solid var(--medicair-border);
-      }
-      
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 0;
-        background: var(--medicair-white);
-      }
-      
-      thead {
-        background: linear-gradient(135deg, var(--medicair-primary) 0%, var(--medicair-secondary) 100%);
-        color: var(--medicair-white);
-      }
-      
-      th {
-        padding: 16px;
-        text-align: left;
-        font-weight: 600;
-        font-size: 0.9rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      
-      td {
-        padding: 14px 16px;
-        border-bottom: 1px solid var(--medicair-border);
-        color: var(--medicair-text);
-      }
-      
-      tbody tr {
-        transition: background-color 0.2s ease;
-      }
-      
-      tbody tr:hover {
-        background-color: #f5f8ff;
-      }
-      
-      tbody tr:last-child td {
-        border-bottom: none;
-      }
-      
-      .medicair-empty {
-        text-align: center;
-        padding: 48px 24px;
-        color: var(--medicair-text-light);
-      }
-      
-      .medicair-empty svg {
-        width: 64px;
-        height: 64px;
-        margin-bottom: 16px;
-        opacity: 0.5;
-      }
-      
-      .medicair-stats {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
-        margin-bottom: 24px;
-      }
-      
-      .medicair-stat-card {
-        background: var(--medicair-white);
-        border-radius: 8px;
-        padding: 20px;
-        box-shadow: 0 2px 4px var(--medicair-shadow);
-        border-left: 3px solid var(--medicair-primary);
-      }
-      
-      .medicair-stat-label {
-        font-size: 0.85rem;
-        color: var(--medicair-text-light);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+      label {
+        display: block;
         margin-bottom: 8px;
+        font-weight: 500;
+        color: #555;
       }
       
-      .medicair-stat-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--medicair-primary);
+      input[type="text"],
+      textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-family: inherit;
+        font-size: 14px;
+        transition: border-color 0.2s;
       }
       
-      .medicair-loading {
-        text-align: center;
-        padding: 48px;
-        color: var(--medicair-text-light);
+      input[type="text"]:focus,
+      textarea:focus {
+        outline: none;
+        border-color: #0066cc;
       }
       
-      .medicair-loading::after {
-        content: "...";
-        animation: dots 1.5s steps(4, end) infinite;
+      input[type="text"] {
+        height: 40px;
       }
       
-      @keyframes dots {
-        0%, 20% { content: "."; }
-        40% { content: ".."; }
-        60%, 100% { content: "..."; }
+      textarea {
+        min-height: 400px;
+        resize: vertical;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      
+      textarea[readonly] {
+        background-color: #f9f9f9;
+        cursor: default;
+      }
+      
+      .status {
+        margin-top: 12px;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+      
+      .status.info {
+        background-color: #e3f2fd;
+        color: #1976d2;
+      }
+      
+      .status.error {
+        background-color: #ffebee;
+        color: #c62828;
       }
       
       @media (max-width: 768px) {
-        .medicair-container {
+        body {
+          padding: 12px;
+        }
+        
+        .container {
           padding: 16px;
         }
         
-        .medicair-card {
-          padding: 16px;
-        }
-        
-        th, td {
-          padding: 12px 8px;
-          font-size: 0.85rem;
-        }
-        
-        .medicair-stats {
-          grid-template-columns: 1fr;
+        h1 {
+          font-size: 1.5rem;
         }
       }
     </style>
   </head>
   <body>
-    <div class="medicair-container">
-      <div class="medicair-header">
-        <h1>MedicAir - Risultati Query</h1>
-        <p>Analisi dati e reportistica in tempo reale</p>
+    <div class="container">
+      <h1>MedicAir MCP Tool Tester</h1>
+      
+      <div class="input-section">
+        <label for="request-input">Richiesta (solo visualizzazione)</label>
+        <input 
+          type="text" 
+          id="request-input" 
+          placeholder="Le richieste vengono inviate da ChatGPT quando chiama i tool MCP..."
+          readonly
+        />
       </div>
       
-      <div id="results-container" class="medicair-card">
-        <div class="medicair-loading">Caricamento risultati</div>
+      <div class="input-section">
+        <label for="response-output">Risposta JSON</label>
+        <textarea 
+          id="response-output" 
+          readonly 
+          placeholder="La risposta JSON apparirà qui quando ChatGPT chiamerà un tool MCP..."
+        ></textarea>
       </div>
+      
+      <div id="status" class="status info" style="display: none;"></div>
     </div>
 
-    <script type="module">
-      let queryResults = null;
-      
-      // Funzione per estrarre i dati dall'EmbeddedResource
-      const extractQueryResults = () => {
-        // Prova diversi percorsi dove i dati potrebbero essere
-        // 1. Da window.openai.toolOutput.queryResults
-        if (window.openai?.toolOutput?.queryResults) {
-          return window.openai.toolOutput.queryResults;
-        }
-        
-        // 2. Da window.openai.toolOutput (dati diretti)
-        if (window.openai?.toolOutput) {
-          const output = window.openai.toolOutput;
-          // Se i dati sono direttamente nell'output con columns/rows
-          if (output.columns && output.rows) {
-            return output;
-          }
-          // Se c'è un campo che contiene i dati JSON
-          if (output.data) {
-            try {
-              return typeof output.data === 'string' ? JSON.parse(output.data) : output.data;
-            } catch (e) {
-              console.error('Error parsing output.data:', e);
-            }
-          }
-        }
-        
-        // 3. Cerca nei resource contents se disponibili
-        if (window.openai?.resources) {
-          for (const resource of window.openai.resources) {
-            if (resource.mimeType === 'application/json' && resource.text) {
-              try {
-                const parsed = typeof resource.text === 'string' ? JSON.parse(resource.text) : resource.text;
-                if (parsed.columns && parsed.rows) {
-                  return parsed;
-                }
-              } catch (e) {
-                console.error('Error parsing resource text:', e);
-              }
-            }
-          }
-        }
-        
-        return null;
-      };
-      
-      const renderResults = () => {
-        const container = document.querySelector("#results-container");
-        
-        queryResults = extractQueryResults();
-        
-        console.log('Query results extracted:', queryResults);
-        console.log('window.openai:', window.openai);
-        
-        if (!queryResults) {
-          container.innerHTML = `
-            <div class="medicair-empty">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-              </svg>
-              <p>Nessun risultato disponibile</p>
-              <p style="font-size: 0.8rem; margin-top: 8px; color: #999;">Debug: window.openai disponibile: ${!!window.openai}</p>
-            </div>
-          `;
-          return;
-        }
-        
-        // Renderizza i risultati della query
-        // Supporta formato: {columns: [...], rows: [[...], [...]]}
-        const data = queryResults;
-        const columns = data.columns || data.headers;
-        const rows = data.rows || [];
-        
-        if (!columns || !rows || rows.length === 0) {
-          container.innerHTML = `
-            <h2>Risultati Query</h2>
-            <div class="medicair-empty">
-              <p>La query non ha restituito risultati</p>
-            </div>
-          `;
-          return;
-        }
-        
-        // Check if rows are arrays (ChatGPT format) or objects (legacy format)
-        const isArrayFormat = Array.isArray(rows[0]);
-        
-        let tableHTML = '<h2>Risultati Query</h2>';
-        tableHTML += '<div class="medicair-table-wrapper"><table><thead><tr>';
-        
-        columns.forEach(column => {
-          tableHTML += `<th>${column}</th>`;
-        });
-        
-        tableHTML += '</tr></thead><tbody>';
-        
-        rows.forEach(row => {
-          tableHTML += '<tr>';
-          if (isArrayFormat) {
-            // ChatGPT format: rows is array of arrays [[val1, val2], [val3, val4]]
-            row.forEach((value, index) => {
-              const displayValue = value !== null && value !== undefined ? String(value) : '';
-              tableHTML += `<td>${displayValue}</td>`;
-            });
-          } else {
-            // Legacy format: rows is array of objects [{col1: val1, col2: val2}]
-            columns.forEach(column => {
-              const value = row[column] !== undefined ? row[column] : '';
-              tableHTML += `<td>${value}</td>`;
-            });
-          }
-          tableHTML += '</tr>';
-        });
-        
-        tableHTML += '</tbody></table></div>';
-        
-        container.innerHTML = tableHTML;
-      };
-      
-      const handleSetGlobals = (event) => {
-        console.log('openai:set_globals event received:', event.detail);
-        const globals = event.detail?.globals;
-        if (globals?.toolOutput) {
-          window.openai = window.openai || {};
-          window.openai.toolOutput = globals.toolOutput;
-          renderResults();
-        }
-      };
-      
-      window.addEventListener("openai:set_globals", handleSetGlobals, {
-        passive: true,
-      });
-      
-      // Prova a renderizzare immediatamente se i dati sono già disponibili
-      if (window.openai) {
-        renderResults();
-      } else {
-        // Aspetta che window.openai sia disponibile
-        const checkOpenAI = setInterval(() => {
-          if (window.openai) {
-            clearInterval(checkOpenAI);
-            renderResults();
-          }
-        }, 100);
-        
-        // Timeout dopo 5 secondi
-        setTimeout(() => {
-          clearInterval(checkOpenAI);
-          renderResults();
-        }, 5000);
-      }
+    <script>
+      /* JavaScript will be injected here by the server */
     </script>
   </body>
 </html>
-

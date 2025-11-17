@@ -128,16 +128,33 @@ def build_application(
                 current_file = Path(__file__)
                 # Risali fino alla root del progetto (src/mcp_server_medicair/server.py -> src -> root)
                 project_root = current_file.parent.parent.parent
-                widget_path = project_root / "public" / "query-results-widget.html"
+                widget_html_path = project_root / "public" / "query-results-widget.html"
+                widget_js_path = project_root / "public" / "query-results-widget.js"
                 
-                logger.info(f"Looking for widget at: {widget_path} (exists: {widget_path.exists()})")
+                logger.info(f"Looking for widget HTML at: {widget_html_path} (exists: {widget_html_path.exists()})")
+                logger.info(f"Looking for widget JS at: {widget_js_path} (exists: {widget_js_path.exists()})")
                 
-                if widget_path.exists():
-                    logger.info(f"Successfully loading widget from: {widget_path}")
-                    return widget_path.read_text(encoding="utf-8")
+                if not widget_html_path.exists():
+                    logger.error(f"Widget HTML file not found at: {widget_html_path}")
+                    raise ValueError(f"Widget file not found: {widget_html_path}")
+                
+                # Leggi il file HTML
+                html_content = widget_html_path.read_text(encoding="utf-8")
+                
+                # Leggi il file JS se esiste e includilo inline
+                if widget_js_path.exists():
+                    js_content = widget_js_path.read_text(encoding="utf-8")
+                    # Sostituisci il placeholder script con il contenuto JS
+                    html_content = html_content.replace(
+                        '<script>\n      /* JavaScript will be injected here by the server */\n    </script>',
+                        f'<script>\n{js_content}\n    </script>'
+                    )
+                    logger.info("Successfully loaded widget HTML and JS, JS included inline")
                 else:
-                    logger.error(f"Widget file not found at: {widget_path}")
-                    raise ValueError(f"Widget file not found: {widget_path}")
+                    logger.warning(f"Widget JS file not found at: {widget_js_path}, serving HTML without JS")
+                
+                logger.info(f"Successfully loading widget from: {widget_html_path}")
+                return html_content
             else:
                 logger.warning(f"Unknown UI resource path: {path_part}")
                 raise ValueError(f"Unknown UI resource path: {path_part}")
