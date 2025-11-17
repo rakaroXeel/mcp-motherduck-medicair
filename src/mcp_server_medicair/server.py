@@ -241,11 +241,9 @@ def build_application(
         try:
             if name == "query":
                 if arguments is None:
-                    return {
-                        "content": [
-                            {"type": "text", "text": "Error: No query provided"}
-                        ]
-                    }
+                    return [
+                        types.TextContent(type="text", text="Error: No query provided")
+                    ]
                 
                 # Get both formatted string and structured data
                 query_sql = arguments["query"]
@@ -307,44 +305,31 @@ def build_application(
                     for row in rows
                 ]
                 
-                # Build OpenAI Apps SDK format payload
-                # Structure: {content: [{type: "text", ...}, {type: "embedded_resource", ...}]}
-                # Each content item must have a "type" field
-                widget_payload = {
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": f"Risultati della query: {row_count} righe trovate.\n\n{formatted_output}"
-                        },
-                        {
-                            "type": "embedded_resource",
-                            "resource": {
-                                "mime_type": "application/json",
-                                "data": {
-                                    "columns": columns,
-                                    "rows": formatted_rows
-                                }
-                            }
-                        }
-                    ]
+                # Build MCP format response - return list of content objects
+                # MCP expects a list of TextContent and EmbeddedResource objects, not a dict
+                widget_data = {
+                    "columns": columns,
+                    "rows": formatted_rows
                 }
                 
-                # Test JSON serialization to catch errors early
-                try:
-                    json.dumps(widget_payload)
-                except (TypeError, ValueError) as json_error:
-                    logger.error(f"❌ Widget Error: JSON serialization failed: {json_error}")
-                    raise
-                
-                logger.info(f"📤 Widget payload sent: {len(formatted_rows)} rows")
-                
-                return widget_payload
-
-            return {
-                "content": [
-                    {"type": "text", "text": f"Unsupported tool: {name}"}
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=f"Risultati della query: {row_count} righe trovate.\n\n{formatted_output}"
+                    ),
+                    types.EmbeddedResource(
+                        type="resource",
+                        resource={
+                            "uri": "ui://widget/query-results.html",
+                            "mimeType": "application/json",
+                            "text": json.dumps(widget_data)
+                        }
+                    )
                 ]
-            }
+
+            return [
+                types.TextContent(type="text", text=f"Unsupported tool: {name}")
+            ]
 
         except Exception as e:
             logger.info(f"❌ Widget Error: {e}")
