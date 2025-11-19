@@ -53,7 +53,7 @@ def build_application(
             ),
             types.Prompt(
                 name="medicair-starting-prompt",
-                description="A second prompt template for DuckDB/MotherDuck interactions",
+                description="A medic air starting prompt for DuckDB/MotherDuck interactions",
             )
         ]
 
@@ -80,7 +80,7 @@ def build_application(
             )
         elif name == "medicair-starting-prompt":
             return types.GetPromptResult(
-                description="A second prompt template for DuckDB/MotherDuck interactions",
+                description="A medic air starting prompt for DuckDB/MotherDuck interactions",
                 messages=[
                     types.PromptMessage(
                         role="user",
